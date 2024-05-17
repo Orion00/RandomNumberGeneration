@@ -1,0 +1,136 @@
+---
+title: "Randomization Analysis"
+author: "Orion Bowers"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{bash data_cleaning, eval = FALSE, echo = FALSE, skip=TRUE}
+cat CalSoup.txt | tr " " $'\n' > CalSoupCleaned.txt
+cat Rrunif.txt | tr '"x"' " " > RrunifCleaned.txt
+cat Rsample.txt | tr '"x"' " " > RsampleCleaned.txt
+```
+
+```{r data_importing, include=FALSE}
+#Online (CalSoup, NumGenerator, Randorg, Textfixer)
+# soup <- count(read_csv("CalSoupCleaned.txt", col_names="Number"), Number, name = "soup") %>% 
+#   mutate(soupFreq = soup / sum(soup))
+# soup
+# ngen <- read_csv("NumGenerator.txt", col_names=FALSE) %>% pull("X1")
+# randorg <- read_csv("Randorg.txt", col_names=FALSE) %>% pull("X1")
+# tfix <- read_csv("Textfixer.txt", col_names=FALSE) %>% pull("X1")
+
+#R (Rrunif, Rsample) (Rdunif same as Rsample)
+# runi <- read_csv("Rrunif.txt") %>% pull("x")
+# rsam <- read_csv("Rsample.txt") %>% pull("x")
+
+#Python (Prand, Pnprand) (Python's base number generator and numpy's number generator)
+# prand <- read_csv("Prand.txt", col_names=FALSE) %>% pull("X1")
+# nprand <- read_csv("Pnprand.txt", col_names=FALSE) %>% pull("X1")
+
+#Physical Generation (d20)
+# d20 <- read_csv("d20.txt", col_names = "Number",col_types = cols(col_factor(levels = as.character(c(1:16)),ordered=T)))
+# propsTable <- count(read_csv("d20.txt", col_names = "Number"), Number, name = "d20") %>% mutate(d20Freq = d20 / sum(d20))
+# d20
+# count(read_csv("d20.txt", col_names = "Number"), Number, name = "d20")
+# levels(d20$Number)
+
+
+propsTable <- tibble("Number" = c(1:16))
+
+addData <- function(newData, newDataName, initialData) {
+  propsTable <- full_join(initialData,count(read_csv(newData, col_names = "Number"), Number, name = newDataName))
+}
+
+#Physical Generation (d20)
+propsTable <- addData("d20.txt","d20",propsTable)
+
+#Online (CalSoup, NumGenerator, Randorg, Textfixer)
+propsTable <- addData("CalSoupCleaned.txt","soup",propsTable)
+propsTable <- addData("NumGenerator.txt","ngen",propsTable)
+propsTable <- addData("Randorg.txt","randorg",propsTable)
+propsTable <- addData("Textfixer.txt","tfix",propsTable)
+
+#R (Rrunif, Rsample) (Rdunif same as Rsample)
+propsTable <- addData("RrunifCleaned.txt","runi",propsTable)
+propsTable <- addData("RsampleCleaned.txt","rsam",propsTable)
+
+#Python (Prand, Pnprand) (Python's base number generator and numpy's number generator)
+propsTable <- addData("Prand.txt","prand",propsTable)
+propsTable <- addData("Pnprand.txt","nprand",propsTable)
+
+propsTable
+
+#TODO: Write function that add proportions to the table. Potentially rename the table. Make histograms with table instead of pure data?
+#TODO: t test on mean, chi^2 on variance, test on runs of same number from rand.org
+
+#TODO: Bayesian: Prior of a uniform, likelihood of the data
+
+
+```
+
+## Randomization Analysis by different programming languages
+The purpose of this project is to determine which programming languages (or other sources) have the most truely random draws.
+This project is inspired by Arkham Horror: The Card Game, which requires drawing 1 out of approximately 16 tokens from a bag with replacement many times throughout a game session. I'll be taking a look at R's random sample, R's continuous uniform function, Python's random sample, C++'s random sample, a Google Search, and Chat GPT's answer. I expect either Python or R to perform the best.
+
+I'll be taking a random sample from a "bag" of numbers 1 - 16 inclusive.
+
+Later, I may check if R and Python and C++ can generate whole numbers from a distribution without using a random sample method.
+
+To determine the randomness, I'll check the Poisson distribution of each number to see if the mean is the expected mean and variance is the expected variance for the count of that number. I'll also check the histograms of of each generator for a discrete uniform look and try to find a test that tests that.
+
+The Discrete Uniform Distribution has the following properties (https://www.sciencedirect.com/topics/mathematics/discrete-uniform-distribution, https://www.math.net/uniform-distribution):
+ - PMF: $p(y) = \frac{1}{k}, y = 1,2,...,k$
+ - Mean: $\mu = \frac{k+1}{2}$
+ - Variance: $\sigma^2 = \frac{(k-1)^2}{12}$
+ 
+ 
+ ### R: Continuous Uniform Sample to Discrete Uniform
+ "To generate a random number from the discrete uniform distribution, one can draw a random number R from the U(0, 1) distribution, calculate S = (n + 1)R, and take the integer part of S as the draw from the discrete uniform distribution." (https://www.sciencedirect.com/topics/mathematics/discrete-uniform-distribution)
+ 
+ ### Discrete Uniform Distribution Information
+https://en.wikipedia.org/wiki/Discrete_uniform_distribution
+https://www.random.org/statistics/runs/
+https://www.random.org/analysis/
+(Randorg.txt) (Seed 121)
+
+https://www.calculatorsoup.com/calculators/statistics/random-number-generator.php
+(CalSoup.txt) (No Seed)
+https://www.calculatorsoup.com/calculators/statistics/random-number-generator.php?min=1&max=16&num_samples=10000&duplicates=yes&sort_answer=none&action=solve
+Cite this content, page or calculator as:
+Furey, Edward "Random Number Generator" at https://www.calculatorsoup.com/calculators/statistics/random-number-generator.php from CalculatorSoup, https://www.calculatorsoup.com - Online Calculators
+
+https://numbergenerator.org/randomnumbergenerator#!numbers=10000&low=1&high=16&unique=false&csv=nl&oddeven=&oddqty=0&sorted=false&addfilters=
+(NumGenerator.txt) (No Seed)
+
+https://www.textfixer.com/numbers/random-number-generator.php
+(Textfixer.txt) (No Seed)
+
+
+Leads:
+https://stackoverflow.com/questions/55327771/c-how-to-generate-10-000-unique-random-integers-to-store-in-a-bst
+
+t test if sample mean is expected mean (and variances)
+
+
+```{r histograms}
+hist(d20)
+ggplot(d20, aes(x=Number, y = after_stat(prop))) + geom_bar(stat="prop")
+geom_bar(mapping = aes(x = cut, y = ..prop.., group = 1), stat = "count")
+d20
+d20 %>% pivot_wider(names_from = X1, values_from = n)
+d <- as.data.frame(Titanic)
+d
+ggplot(d) +
+  aes(x = Class, fill = Sex, weight = Freq, by = Sex, y = after_stat(prop)) +
+  geom_bar(stat = "prop", position = "dodge") +
+  scale_y_continuous(labels = scales::percent)
+
+```
+
+Ethical considerations
