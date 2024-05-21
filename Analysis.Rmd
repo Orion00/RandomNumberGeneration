@@ -36,7 +36,7 @@ nprand <- read_csv("Data/Pnprand.txt", col_names=FALSE) %>% pull("X1")
 d20 <- read_csv("Data/d20.txt", col_names=FALSE) %>% pull("X1")
 
 
-propsTable <- tibble("Number" = as.factor(c(1:16)))
+propsTable <- tibble("Number" = c(1:16))
 
 addData <- function(newData, newDataName, initialData) {
   propsTable <- full_join(initialData,count(read_csv(newData, col_names = "Number"), Number, name = newDataName))
@@ -59,7 +59,7 @@ propsTable <- addData("Data/RsampleCleaned.txt","rsam",propsTable)
 propsTable <- addData("Data/Prand.txt","prand",propsTable)
 propsTable <- addData("Data/Pnprand.txt","nprand",propsTable)
 
-propsTable
+propsTable$Number <- as.factor(propsTable$Number)
 
 
 #TODO: test on runs of same number from rand.org
@@ -116,19 +116,35 @@ https://stackoverflow.com/questions/55327771/c-how-to-generate-10-000-unique-ran
 
 ```{r bar_charts}
 columns_to_plot <- names(propsTable)[names(propsTable) != "Number"]
+expected_prop <- (1 / 16)
+z_critical <- qnorm(c(.025,.975))  # Crit valyes for 95% CI, approximately 1.96 by 69-95-99.5 rule
 
 # Loop through each column
 for (col in columns_to_plot) {
   col_mean <- mean(propsTable[[col]])
+  n <- sum(propsTable[[col]])
+  SE <- sqrt((expected_prop * (1 - expected_prop)) / n)
   
-  p <- ggplot(data = propsTable, aes(x=Number, y = !!sym(col))) +
+  lower_bound <- (expected_prop + z_critical[1] * SE)
+  upper_bound <- (expected_prop + z_critical[2] * SE)
+  
+  
+  p <- ggplot(data = propsTable, aes(x=Number, y = (!!sym(col)) / n)) +
     geom_bar(stat="Identity") +
-    geom_hline(yintercept = col_mean, color = "red", linetype = "dashed") +  # Add mean line
+    geom_hline(yintercept = expected_prop, color = "dodgerblue3", linetype = "solid") + # Expected Mean 
+    # geom_hline(yintercept = col_mean, color = "red", linetype = "dotted") + # Data Mean
+    geom_hline(yintercept = lower_bound, color = "firebrick3", linetype = "dashed") + #
+    geom_hline(yintercept = upper_bound, color = "firebrick3", linetype = "dashed") +
     labs(title = col)  # Add title for each plot
   
   # Print the plot
   print(p)
+  
+  #TODO: prop.test for each number for each col in col_to_plot, then print p-value
 }
+
+
+
 ```
 
 As n increases, the visual variance reduces drastically. TODO: Because I generated more from better methods or because n is large?
@@ -212,5 +228,7 @@ for (dat in columns_to_plot) {
 ```
 
 While there are a few lines that poke out for each chart, independence seems met.
+
+#TODO: IQR range like stat 121 with bar charts for props
 
 ## Ethical considerations
