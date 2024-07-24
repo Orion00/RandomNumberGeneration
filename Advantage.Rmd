@@ -1,0 +1,157 @@
+---
+title: "Advantage"
+author: "Orion Bowers"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup}
+set.seed(101)
+num_trials <- 10000000
+
+roll_die <- function(n, sides) {
+  if (sides == 20) {
+    floor(runif(n, 1, sides+1))
+  } else if (sides==10) {
+    floor(runif(n, 0, sides))
+  } else if (sides==100) {
+    floor(runif(n, 0, sides))
+  }
+}
+  
+sim_rolls <- function(n, sides, bonus=0, penalty=0, push=FALSE) {
+    if (!(sides == 20 || sides == 10 || sides == 100)) {
+        return("Error: Please use a d20, d10 or d100")
+    }
+    if (bonus < 0 || bonus > 2) {
+      return("Error: Please restrict bonus dice from 0 to 2")
+    }
+    if (penalty < 0 || penalty > 2) {
+      return("Error: Please restrict penalty dice from 0 to 2")
+    }
+    if (bonus != 0 && penalty != 0) {
+      return("Error: Choose either bonus or penalty dice (subtract one from the other if needed)")
+    }
+  
+    if (sides == 20) {
+      # d10
+      result <- roll_die(n, sides)
+      if (bonus > 0) {
+        rolls <- replicate(bonus, roll_die(n, sides), simplify = FALSE) # Bonus dice rolled
+        result <- do.call(pmax, c(list(result), rolls)) # Calls pmax on result and bonus rolls
+      } else if (penalty > 0) {
+        rolls <- replicate(penalty, roll_die(n, sides), simplify = FALSE) # Penalty dice rolled
+        result <- do.call(pmin, c(list(result), rolls)) # Calls pmin on result and penalty rolls
+      }
+      
+    } else if (sides == 10) {
+      # d10*10 + 1d10 (only reroll the tens die with bonus/penalty)
+      tens <- roll_die(n, sides)*10
+      ones <- roll_die(n, sides)
+
+      if (bonus > 0) {
+        rolls <- replicate(bonus, roll_die(n, sides)*10, simplify = FALSE) # Bonus dice rolled
+        tens <- do.call(pmin, c(list(tens), rolls)) # Calls pmax on result and bonus rolls
+      } else if (penalty > 0) {
+        rolls <- replicate(penalty, roll_die(n, sides)*10, simplify = FALSE) # Penalty dice rolled
+        tens <- do.call(pmax, c(list(tens), rolls)) # Calls pmin on result and penalty rolls
+      }
+      
+      result <- tens+ones
+    } else {
+      # 1d100
+      result <- roll_die(n, sides)
+      if (bonus > 0) {
+        rolls <- replicate(bonus, roll_die(n, sides), simplify = FALSE) # Bonus dice rolled
+        result <- do.call(pmin, c(list(result), rolls)) # Calls pmax on result and bonus rolls
+      } else if (penalty > 0) {
+        rolls <- replicate(penalty, roll_die(n, sides), simplify = FALSE) # Penalty dice rolled
+        result <- do.call(pmax, c(list(result), rolls)) # Calls pmin on result and penalty rolls
+      }
+    }
+  
+  return(result)
+    
+}
+```
+
+
+
+## Introduction
+
+Differences between systems.
+
+Advantage/Disadvantage.
+
+Pushing/Rerolling
+
+Cutoffs on 1/4, 1/2, 3/4 of a typical character (8-16 and 1% - 99%)
+
+## D&D
+
+```{r}
+standard <- sim_rolls(num_trials, 20)
+advantage <- sim_rolls(num_trials, 20, bonus = 1)
+advantage2 <- sim_rolls(num_trials, 20, bonus = 2)
+disadvantage <- sim_rolls(num_trials, 20, penalty = 1)
+disadvantage2 <- sim_rolls(num_trials, 20, penalty = 2)
+
+plot(table(standard), main='Standard Roll')
+
+plot(table(advantage), main= 'Advantage')
+plot(table(advantage2), main='Double Advantage')
+
+plot(table(disadvantage), main= 'Disadvantage')
+plot(table(disadvantage2), main='Double Disadvantage')
+
+```
+
+
+
+
+## Call of Cthulhu
+
+### Side Note
+
+1d10*10 + 1d10 isn't quite the same as 1d100, but it's very similar in practice and is probably not worth the hassle of using a full d100 while playing. The difference is most evident when using bonus and penalty dice because the probabilities for each number don't follow a smooth curve when using 2d10s.
+
+```{r}
+standard <- sim_rolls(num_trials, 10)
+bonus <- sim_rolls(num_trials, 10, bonus = 1)
+bonus2 <- sim_rolls(num_trials, 10, bonus = 2)
+penalty <- sim_rolls(num_trials, 10, penalty = 1)
+penalty2 <- sim_rolls(num_trials, 10, penalty = 2)
+
+plot(table(standard), main = "Standard Roll 1d10*10+1d10")
+
+plot(table(bonus), main = "1 Bonus Die")
+plot(table(bonus2), main = "2 Bonus Dice")
+
+plot(table(penalty), main = "1 Penalty Die")
+plot(table(penalty2), main = "2 Penalty Dice")
+```
+
+
+```{r}
+standard <- sim_rolls(num_trials, 100)
+bonus <- sim_rolls(num_trials, 100, bonus = 1)
+bonus2 <- sim_rolls(num_trials, 100, bonus = 2)
+penalty <- sim_rolls(num_trials, 100, penalty = 1)
+penalty2 <- sim_rolls(num_trials, 100, penalty = 2)
+
+plot(table(standard), main = "Standard Roll 1d100")
+
+plot(table(bonus), main = "1 Bonus Die")
+plot(table(bonus2), main = "2 Bonus Dice")
+
+plot(table(penalty), main = "1 Penalty Die")
+plot(table(penalty2), main = "2 Penalty Dice")
+```
+
+```{r}
+low_boundary <- 25
+mid_boundary <- 50
+up_boundary <- 75
+```
